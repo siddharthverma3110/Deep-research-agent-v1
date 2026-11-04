@@ -1,0 +1,11 @@
+services:
+  - type: web
+    name: deep-research
+    runtime: docker
+    plan: free          # change to starter to avoid spin-down after 15 min idle
+    healthCheckPath: /health
+    envVars:
+      - key: OPENAI_API_KEY
+        sync: false     # Render prompts for this at deploy time
+      - key: APP_PASSWORD
+        sync: false
