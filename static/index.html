@@ -29,8 +29,8 @@
   main { max-width:760px; margin:0 auto; padding:56px 20px 96px; }
 
   .brand { font-weight:600; color:var(--marine); letter-spacing:.01em; margin-bottom:28px; }
-  h1 { font-family:var(--serif); font-weight:500; font-size:clamp(2rem, 5.5vw, 3.1rem);
-       line-height:1.1; letter-spacing:-.015em; margin:0 0 12px; }
+  h1 { font-family:var(--serif); font-weight:600; font-size:clamp(3rem, 10vw, 5.2rem);
+       line-height:1.02; letter-spacing:-.025em; margin:0 0 14px; }
   .lede { color:var(--muted); max-width:52ch; margin:0 0 28px; }
 
   form { background:var(--card); border:1px solid var(--line); border-radius:14px; padding:8px;
@@ -98,6 +98,27 @@
   #report table { border-collapse:collapse; font-family:var(--sans); font-size:.95rem; }
   #report th, #report td { border:1px solid var(--line); padding:8px 12px; text-align:left; }
 
+  /* citations */
+  a.cite { font-family:var(--sans); font-size:.72em; vertical-align:super; line-height:0; text-decoration:none;
+           color:var(--marine); font-weight:600; padding:0 1px; border-radius:3px; }
+  a.cite:hover, a.cite:focus-visible { background:var(--tint); outline:none; }
+  #tip { position:fixed; z-index:50; display:none; width:min(340px, calc(100vw - 24px)); background:var(--card);
+         color:var(--ink); border:1px solid var(--line); border-radius:10px; padding:12px 14px;
+         box-shadow:0 8px 28px rgba(0,0,0,.22); font-family:var(--sans); font-size:.88rem; line-height:1.45; }
+  #tip .k { color:var(--muted); font-size:.8rem; margin-bottom:4px; }
+  #tip .t { display:block; font-weight:600; color:var(--marine); margin-bottom:4px; text-decoration:none; }
+  #tip .t:hover { text-decoration:underline; }
+  #tip .m { color:var(--muted); margin-bottom:6px; }
+  #tip .s { border-left:3px solid var(--line); padding-left:10px; color:var(--ink); }
+  #refs { padding:4px clamp(18px, 5vw, 44px) 36px; border-top:1px solid var(--line); }
+  #refs h2 { font-family:var(--serif); font-size:1.3rem; margin:26px 0 8px; }
+  #refs ol { margin:0; padding:0; list-style:none; }
+  #refs li { display:grid; grid-template-columns:2.4em 1fr; gap:4px; padding:7px 8px; margin:0 -8px;
+             border-radius:8px; font-size:.95rem; scroll-margin-top:20px; }
+  #refs li:target { background:var(--tint); }
+  #refs .n { color:var(--muted); font-weight:600; }
+  #refs a { color:var(--marine); font-weight:500; overflow-wrap:anywhere; }
+  #refs .m { display:block; color:var(--muted); font-size:.86rem; }
   @media (max-width:560px) {
     main { padding-top:32px; }
     form { flex-direction:column; align-items:stretch; }
@@ -109,9 +130,8 @@
 </head>
 <body>
 <main>
-  <div class="brand">Deep Research</div>
-  <h1>What do you want to know?</h1>
-  <p class="lede">Ask a question and get a researched, written report. It plans several web searches, reads the results, and writes it up for you.</p>
+  <h1>Deep Research</h1>
+  <p class="lede">Ask a question and get a written report built from web sources and academic papers, with citations you can hover over.</p>
 
   <form id="f">
     <textarea id="q" rows="1" placeholder="e.g. How are heat pumps changing home heating in cold climates?" required minlength="3" maxlength="500" aria-label="Research topic"></textarea>
@@ -126,7 +146,7 @@
   <section id="tracker" aria-live="polite">
     <ol class="steps">
       <li class="step pending" id="s1"><i class="dot">1</i><b>Plan</b><span>Choosing what to search</span></li>
-      <li class="step pending" id="s2"><i class="dot">2</i><b>Search</b><span id="s2d">Reading the web</span></li>
+      <li class="step pending" id="s2"><i class="dot">2</i><b>Search</b><span id="s2d">Web and academic papers</span></li>
       <li class="step pending" id="s3"><i class="dot">3</i><b>Write</b><span>Drafting the report</span></li>
     </ol>
     <div id="meta"></div>
@@ -138,6 +158,7 @@
       <div class="acts"><button id="copy" type="button">Copy markdown</button><button id="dl" type="button">Download .md</button></div>
     </div>
     <div id="report"></div>
+    <div id="refs"></div>
   </article>
 </main>
 
@@ -169,7 +190,7 @@
   function onStatus(t) {
     if (t.startsWith("Trace: ")) { showTrace(t.slice(7)); return; }
     if (t.startsWith("Planning")) setStep(1);
-    else if (t.startsWith("Planned")) { setStep(2); const m=t.match(/Planned (\d+)/); if (m) $("s2d").textContent = "Reading the web, " + m[1] + " searches in parallel"; }
+    else if (t.startsWith("Planned")) { setStep(2); const m=t.match(/\((\d+) web, (\d+) academic\)/); if (m) $("s2d").textContent = m[1] + " web and " + m[2] + " academic searches in parallel"; }
     else if (t.startsWith("Searches complete")) setStep(3);
   }
   function fail(msg) { err.textContent = msg; err.classList.add("on"); tracker.classList.remove("on"); }
@@ -196,9 +217,9 @@
           if (m.type === "status") onStatus(m.text);
           else if (m.type === "error") fail(m.text);
           else if (m.type === "report") {
-            rawReport = m.text; finishAll();
-            rep.innerHTML = DOMPurify.sanitize(marked.parse(m.text));
-            $("wc").textContent = m.text.split(/\s+/).filter(Boolean).length.toLocaleString() + " words";
+            rawReport = m.text.markdown; finishAll();
+            renderReport(m.text.markdown, m.text.sources);
+            $("wc").textContent = rawReport.split(/\s+/).filter(Boolean).length.toLocaleString() + " words, " + m.text.sources.length + " sources";
             sheet.classList.add("on");
             sheet.scrollIntoView({ behavior:"smooth", block:"start" });
           }
@@ -207,6 +228,66 @@
     } catch (ex) { fail(ex.message); }
     finally { go.disabled = false; go.textContent = "Research"; }
   });
+
+  /* ---- citations: render, tooltip, reference list ---- */
+  const tip = document.createElement("div"); tip.id = "tip"; tip.setAttribute("role","tooltip"); document.body.append(tip);
+  let srcMap = {}, hideT;
+  const safeUrl = u => { try { const x = new URL(u); return /^https?:$/.test(x.protocol) ? x.href : "#"; } catch { return "#"; } };
+  const host = u => { try { return new URL(u).hostname.replace(/^www\./, ""); } catch { return ""; } };
+  const el = (tag, cls, text) => { const e = document.createElement(tag); if (cls) e.className = cls; if (text) e.textContent = text; return e; };
+  const metaLine = s => s.kind === "paper"
+    ? [s.authors, s.year, s.venue].filter(Boolean).join(", ") + (s.cited_by != null ? " (cited by " + s.cited_by + ")" : "")
+    : host(s.url);
+
+  function renderReport(markdown, sources) {
+    srcMap = {}; sources.forEach(s => srcMap[s.n] = s);
+    const md = markdown.replace(/\[(\d+)\](?!\()/g, (m, n) =>
+      srcMap[n] ? '<a class="cite" data-n="' + n + '" href="#ref-' + n + '">[' + n + ']</a>' : m);
+    rep.innerHTML = DOMPurify.sanitize(marked.parse(md));
+    const refs = $("refs"); refs.textContent = "";
+    [["web", "Web sources"], ["paper", "Academic papers"]].forEach(([kind, label]) => {
+      const list = sources.filter(s => s.kind === kind);
+      if (!list.length) return;
+      refs.append(el("h2", "", label));
+      const ol = el("ol");
+      list.forEach(s => {
+        const li = el("li"); li.id = "ref-" + s.n;
+        li.append(el("span", "n", "[" + s.n + "]"));
+        const body = el("div"), a = el("a", "", s.title);
+        a.href = safeUrl(s.url); a.target = "_blank"; a.rel = "noopener";
+        body.append(a, el("span", "m", metaLine(s)));
+        li.append(body); ol.append(li);
+      });
+      refs.append(ol);
+    });
+  }
+
+  function showTip(c) {
+    const s = srcMap[c.dataset.n]; if (!s) return;
+    tip.textContent = "";
+    tip.append(el("div", "k", s.kind === "paper" ? "Academic paper" : "Web source"));
+    const t = el("a", "t", s.title); t.href = safeUrl(s.url); t.target = "_blank"; t.rel = "noopener";
+    tip.append(t, el("div", "m", metaLine(s)));
+    if (s.snippet) tip.append(el("div", "s", s.kind === "paper" ? "Abstract: " + s.snippet + "\u2026" : "Cited for: " + s.snippet));
+    tip.style.display = "block";
+    const r = c.getBoundingClientRect(), w = tip.offsetWidth, h = tip.offsetHeight;
+    let left = Math.max(12, Math.min(r.left + r.width / 2 - w / 2, innerWidth - w - 12));
+    let top = r.bottom + 8; if (top + h > innerHeight - 8 && r.top - h - 8 > 8) top = r.top - h - 8;
+    tip.style.left = left + "px"; tip.style.top = top + "px";
+  }
+  const hideTip = () => { hideT = setTimeout(() => tip.style.display = "none", 180); };
+  const keepTip = () => clearTimeout(hideT);
+  rep.addEventListener("mouseover", e => { const c = e.target.closest("a.cite"); if (c) { keepTip(); showTip(c); } });
+  rep.addEventListener("mouseout", e => { if (e.target.closest("a.cite")) hideTip(); });
+  rep.addEventListener("focusin", e => { const c = e.target.closest("a.cite"); if (c) { keepTip(); showTip(c); } });
+  rep.addEventListener("focusout", e => { if (e.target.closest("a.cite")) hideTip(); });
+  rep.addEventListener("click", e => {   /* touch screens have no hover: tap shows the card */
+    const c = e.target.closest("a.cite");
+    if (c && matchMedia("(hover: none)").matches) { e.preventDefault(); keepTip(); showTip(c); }
+  });
+  tip.addEventListener("mouseenter", keepTip); tip.addEventListener("mouseleave", hideTip);
+  document.addEventListener("click", e => { if (!e.target.closest("a.cite") && !e.target.closest("#tip")) tip.style.display = "none"; });
+  addEventListener("scroll", () => tip.style.display = "none", { passive: true });
 
   $("copy").addEventListener("click", async () => {
     try { await navigator.clipboard.writeText(rawReport); $("copy").textContent = "Copied"; }

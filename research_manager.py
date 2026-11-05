@@ -2,42 +2,79 @@ import asyncio
 
 from agents import Runner, trace, gen_trace_id
 from search_agent import search_agent
-from planner_agent import planner_agent, WebSearchItem, WebSearchPlan
+from academic_agent import academic_agent
+from planner_agent import planner_agent, WebSearchItem, ResearchPlan, HOW_MANY_SEARCHES
 from writer_agent import writer_agent, ReportData
+from academic import search_papers
+from sources import SourceRegistry, cite_web_result, finalize
 
 
 class ResearchManager:
     async def run(self, query: str):
-        """Run the deep research process, yielding ("status", text) events and finally ("report", markdown)."""
+        """Yield ("status", text) events and finally ("report", {markdown, sources})."""
+        registry = SourceRegistry()
         trace_id = gen_trace_id()
         with trace("Research trace", trace_id=trace_id):
             yield ("status", f"Trace: https://platform.openai.com/traces/trace?trace_id={trace_id}")
             yield ("status", "Planning searches...")
-            search_plan = await self.plan_searches(query)
-            yield ("status", f"Planned {len(search_plan.searches)} searches, running in parallel...")
-            search_results = await self.perform_searches(search_plan)
+            plan = await self.plan_searches(query)
+            w, a = len(plan.web_searches), len(plan.academic_searches)
+            yield ("status", f"Planned {w + a} searches ({w} web, {a} academic), running in parallel...")
+            web, academic = await asyncio.gather(
+                self.perform_web(plan.web_searches, registry),
+                self.perform_academic(plan.academic_searches, registry),
+            )
             yield ("status", "Searches complete, writing report...")
-            report = await self.write_report(query, search_results)
-            yield ("report", report.markdown_report)
+            report = await self.write_report(query, web, academic)
+            markdown, sources = finalize(report.markdown_report, registry)
+            yield ("report", {"markdown": markdown, "sources": sources})
 
-    async def plan_searches(self, query: str) -> WebSearchPlan:
+    async def plan_searches(self, query: str) -> ResearchPlan:
         result = await Runner.run(planner_agent, f"Query: {query}")
-        return result.final_output_as(WebSearchPlan)
+        plan = result.final_output_as(ResearchPlan)
+        plan.web_searches = plan.web_searches[:HOW_MANY_SEARCHES]
+        plan.academic_searches = plan.academic_searches[:HOW_MANY_SEARCHES]
+        return plan
 
-    async def perform_searches(self, plan: WebSearchPlan) -> list[str]:
-        tasks = [asyncio.create_task(self.search(item)) for item in plan.searches]
-        results = await asyncio.gather(*tasks)
-        return [r for r in results if r is not None]
+    async def perform_web(self, items: list[WebSearchItem], registry: SourceRegistry) -> list[str]:
+        results = await asyncio.gather(*(self.web_search(i, registry) for i in items))
+        return [r for r in results if r]
 
-    async def search(self, item: WebSearchItem) -> str | None:
-        input = f"Search term: {item.query}\nReason for searching: {item.reason}"
+    async def perform_academic(self, items: list[WebSearchItem], registry: SourceRegistry) -> list[str]:
+        results = await asyncio.gather(*(self.academic_search(i, registry) for i in items))
+        return [r for r in results if r]
+
+    async def web_search(self, item: WebSearchItem, registry: SourceRegistry) -> str | None:
+        prompt = f"Search term: {item.query}\nReason for searching: {item.reason}"
         try:
-            result = await Runner.run(search_agent, input)
-            return str(result.final_output)
+            result = await Runner.run(search_agent, prompt)
+            return f"Search: {item.query}\n{cite_web_result(result, registry)}"
         except Exception:
             return None
 
-    async def write_report(self, query: str, search_results: list[str]) -> ReportData:
-        input = f"Original query: {query}\nSummarized search results: {search_results}"
-        result = await Runner.run(writer_agent, input)
+    async def academic_search(self, item: WebSearchItem, registry: SourceRegistry) -> str | None:
+        papers = await search_papers(item.query)
+        if not papers:
+            return None
+        lines = []
+        for p in papers:
+            s = registry.add("paper", p["title"], p["url"], authors=p["authors"], year=p["year"],
+                             venue=p["venue"], cited_by=p["cited_by"], snippet=p["snippet"])
+            meta = ", ".join(str(x) for x in (p["authors"], p["year"], p["venue"]) if x)
+            lines.append(f"[{s.id}] {s.title} ({meta})\nAbstract: {p['abstract']}")
+        prompt = (f"Search term: {item.query}\nReason for searching: {item.reason}\n\nPapers:\n"
+                  + "\n\n".join(lines))
+        try:
+            result = await Runner.run(academic_agent, prompt)
+            return f"Search: {item.query}\n{result.final_output}"
+        except Exception:
+            return None
+
+    async def write_report(self, query: str, web: list[str], academic: list[str]) -> ReportData:
+        prompt = (
+            f"Original query: {query}\n\n"
+            "## WEB SEARCH RESULTS\n" + ("\n\n".join(web) or "(none)") + "\n\n"
+            "## ACADEMIC PAPER RESULTS\n" + ("\n\n".join(academic) or "(none)")
+        )
+        result = await Runner.run(writer_agent, prompt)
         return result.final_output_as(ReportData)

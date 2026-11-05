@@ -4,23 +4,28 @@ from agents import Agent
 HOW_MANY_SEARCHES = 5
 
 INSTRUCTIONS = (
-    "You are a helpful research assistant. Given a query, come up with a set of web "
-    f"searches to perform to best answer the query. Output {HOW_MANY_SEARCHES} terms to query for."
+    "You are a helpful research assistant. Given a query, plan two kinds of searches:\n"
+    f"1. web_searches: exactly {HOW_MANY_SEARCHES} general web search queries (news, reports, official sources, explainers).\n"
+    f"2. academic_searches: exactly {HOW_MANY_SEARCHES} queries for an academic paper database. Write them as short "
+    "keyword phrases of scholarly terminology (3-7 words, no questions, no operators) covering different angles "
+    "such as mechanisms, methods, evidence, reviews and open problems.\n"
+    "For each query give a short reason it matters to the original question."
 )
 
 
 class WebSearchItem(BaseModel):
     reason: str = Field(description="Why this search is important to the query.")
-    query: str = Field(description="The search term to use for the web search.")
+    query: str = Field(description="The search term to use.")
 
 
-class WebSearchPlan(BaseModel):
-    searches: list[WebSearchItem] = Field(description="The web searches to perform.")
+class ResearchPlan(BaseModel):
+    web_searches: list[WebSearchItem] = Field(description="General web searches.")
+    academic_searches: list[WebSearchItem] = Field(description="Academic paper searches.")
 
 
 planner_agent = Agent(
     name="PlannerAgent",
     instructions=INSTRUCTIONS,
     model="gpt-4o-mini",
-    output_type=WebSearchPlan,
+    output_type=ResearchPlan,
 )
