@@ -74,7 +74,7 @@ class ResearchManager:
         prompt = (
             f"Original query: {query}\n\n"
             "## WEB SEARCH RESULTS\n" + ("\n\n".join(web) or "(none)") + "\n\n"
-            "## ACADEMIC PAPER RESULTS\n" + ("\n\n".join(academic) or "(none)")
+            "## ACADEMIC PAPER RESULTS\n" + ("\n\n".join(academic) or "(none: the academic search service returned no papers or was unavailable)")
         )
         result = await Runner.run(writer_agent, prompt)
         return result.final_output_as(ReportData)

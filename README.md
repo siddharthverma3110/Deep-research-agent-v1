@@ -15,3 +15,8 @@ Open http://localhost:8000
 2. Render Dashboard > New > Blueprint > select the repo.
 3. Enter OPENAI_API_KEY and APP_PASSWORD (username: admin) when prompted.
 4. Open the generated https://<name>.onrender.com URL.
+
+## Academic search keys
+Academic papers come from OpenAlex, which now requires a free API key (openalex.org/settings/api).
+Set OPENALEX_API_KEY (locally in .env, on Render under Environment). Without a key, academic search is disabled and that report section will be empty.
+Search failures are written to the logs (Render: your service > Logs).
