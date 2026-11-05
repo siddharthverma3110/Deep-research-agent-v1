@@ -26,29 +26,30 @@
   html { scroll-behavior: smooth; }
   body { margin:0; background:var(--paper); color:var(--ink); font-family:var(--sans);
          font-size:16px; line-height:1.55; }
-  main { max-width:760px; margin:0 auto; padding:56px 20px 96px; }
+  main { max-width:760px; margin:0 auto; padding:72px 20px 96px; }
 
   .brand { font-weight:600; color:var(--marine); letter-spacing:.01em; margin-bottom:28px; }
   h1 { font-family:var(--serif); font-weight:600; font-size:clamp(3rem, 10vw, 5.2rem);
        line-height:1.02; letter-spacing:-.025em; margin:0 0 14px; }
-  .lede { color:var(--muted); max-width:52ch; margin:0 0 28px; }
+  .lede { color:var(--muted); font-size:1.08rem; max-width:54ch; margin:0 0 32px; }
 
-  form { background:var(--card); border:1px solid var(--line); border-radius:14px; padding:8px;
+  form { background:var(--card); border:1px solid var(--line); border-radius:18px; padding:10px;
+         box-shadow:0 1px 2px rgba(20,32,43,.05), 0 14px 28px -16px rgba(20,32,43,.22);
          display:flex; gap:8px; align-items:flex-end; transition:border-color .15s, box-shadow .15s; }
   form:focus-within { border-color:var(--marine); box-shadow:0 0 0 3px color-mix(in srgb, var(--marine) 22%, transparent); }
   textarea { flex:1; resize:none; border:0; outline:0; background:transparent; color:inherit;
              font:inherit; font-family:var(--serif); font-size:1.2rem; line-height:1.4;
-             padding:10px 12px; min-height:48px; max-height:160px; }
+             padding:12px 14px; min-height:52px; max-height:160px; }
   textarea::placeholder { color:var(--muted); }
   button { font:inherit; cursor:pointer; border:0; border-radius:10px; }
-  #go { background:var(--marine); color:var(--marine-ink); font-weight:600; padding:12px 22px; }
+  #go { background:var(--marine); color:var(--marine-ink); font-weight:600; padding:14px 26px; border-radius:12px; }
   #go:hover:not(:disabled) { filter:brightness(1.08); }
   #go:disabled { opacity:.55; cursor:progress; }
   button:focus-visible { outline:3px solid var(--signal); outline-offset:2px; }
 
-  .chips { display:flex; flex-wrap:wrap; gap:8px; margin:14px 0 0; }
+  .chips { display:flex; flex-wrap:wrap; gap:8px; margin:16px 2px 0; }
   .chip { background:transparent; border:1px solid var(--line); color:var(--muted);
-          padding:6px 12px; border-radius:999px; font-size:.9rem; }
+          padding:7px 14px; border-radius:999px; font-size:.9rem; background:var(--card); }
   .chip:hover { border-color:var(--marine); color:var(--marine); }
 
   /* pipeline tracker */
@@ -134,13 +135,13 @@
   <p class="lede">Ask a question and get a written report built from web sources and academic papers, with citations you can hover over.</p>
 
   <form id="f">
-    <textarea id="q" rows="1" placeholder="e.g. How are heat pumps changing home heating in cold climates?" required minlength="3" maxlength="500" aria-label="Research topic"></textarea>
+    <textarea id="q" rows="1" autocomplete="off" data-gramm="false" data-gramm_editor="false" data-enable-grammarly="false" data-lpignore="true" data-1p-ignore placeholder="e.g. How are heat pumps changing home heating in cold climates?" required minlength="3" maxlength="500" aria-label="Research topic"></textarea>
     <button id="go" type="submit">Research</button>
   </form>
   <div class="chips" id="chips">
-    <button type="button" class="chip">Solid-state batteries: where are we now?</button>
-    <button type="button" class="chip">Pros and cons of a four-day work week</button>
-    <button type="button" class="chip">How does CRISPR gene editing work?</button>
+    <button type="button" class="chip">Solid-state batteries today</button>
+    <button type="button" class="chip">Four-day work week</button>
+    <button type="button" class="chip">How CRISPR works</button>
   </div>
 
   <section id="tracker" aria-live="polite">
