@@ -26,30 +26,38 @@
   html { scroll-behavior: smooth; }
   body { margin:0; background:var(--paper); color:var(--ink); font-family:var(--sans);
          font-size:16px; line-height:1.55; }
-  main { max-width:760px; margin:0 auto; padding:72px 20px 96px; }
+  main { max-width:880px; margin:0 auto; padding:48px 20px 96px; min-height:100vh; display:flex; flex-direction:column; }
+  body.idle main { justify-content:center; padding-bottom:12vh; }
+  h1 { font-family:var(--serif); font-weight:400; font-size:clamp(2.2rem, 6vw, 3.3rem); line-height:1.1;
+       letter-spacing:-.015em; margin:0 0 28px; text-align:center; }
+  body:not(.idle) h1 { font-size:clamp(1.8rem, 4.5vw, 2.4rem); margin-bottom:20px; }
 
-  .brand { font-weight:600; color:var(--marine); letter-spacing:.01em; margin-bottom:28px; }
-  h1 { font-family:var(--serif); font-weight:600; font-size:clamp(3rem, 10vw, 5.2rem);
-       line-height:1.02; letter-spacing:-.025em; margin:0 0 14px; }
-  .lede { color:var(--muted); font-size:1.08rem; max-width:54ch; margin:0 0 32px; }
-
-  form { background:var(--card); border:1px solid var(--line); border-radius:18px; padding:10px;
-         box-shadow:0 1px 2px rgba(20,32,43,.05), 0 14px 28px -16px rgba(20,32,43,.22);
-         display:flex; gap:8px; align-items:flex-end; transition:border-color .15s, box-shadow .15s; }
+  .composer { background:var(--tint); border-radius:22px; padding:0 6px 6px; }
+  .strip { padding:11px 14px; font-size:.92rem; color:var(--muted); }
+  form { background:var(--card); border:1px solid var(--line); border-radius:17px; padding:6px 8px 8px;
+         box-shadow:0 1px 2px rgba(20,32,43,.05), 0 14px 28px -18px rgba(20,32,43,.25);
+         transition:border-color .15s, box-shadow .15s; }
   form:focus-within { border-color:var(--marine); box-shadow:0 0 0 3px color-mix(in srgb, var(--marine) 22%, transparent); }
-  textarea { flex:1; resize:none; border:0; outline:0; background:transparent; color:inherit;
-             font:inherit; font-family:var(--serif); font-size:1.2rem; line-height:1.4;
-             padding:12px 14px; min-height:52px; max-height:160px; }
-  textarea::placeholder { color:var(--muted); }
+  textarea { display:block; width:100%; resize:none; border:0; outline:0; background:transparent; color:inherit;
+             font-family:var(--serif); font-size:1.1rem; line-height:1.45; padding:10px 10px 4px;
+             min-height:84px; max-height:240px; }
+  textarea::placeholder { color:var(--muted); opacity:.8; }
+  .tools { display:flex; justify-content:space-between; align-items:center; padding:4px 2px 0; }
+  .pill { display:inline-flex; align-items:center; gap:7px; background:var(--tint); color:var(--marine);
+          font-size:.9rem; font-weight:500; padding:7px 14px; border-radius:999px; }
+  .pill svg { width:16px; height:16px; }
   button { font:inherit; cursor:pointer; border:0; border-radius:10px; }
-  #go { background:var(--marine); color:var(--marine-ink); font-weight:600; padding:14px 26px; border-radius:12px; }
-  #go:hover:not(:disabled) { filter:brightness(1.08); }
-  #go:disabled { opacity:.55; cursor:progress; }
+  #go { width:42px; height:42px; border-radius:50%; background:var(--marine); color:var(--marine-ink);
+        display:grid; place-items:center; padding:0; transition:filter .15s, opacity .15s; }
+  #go svg { width:20px; height:20px; }
+  #go:hover:not(:disabled) { filter:brightness(1.1); }
+  #go:disabled { opacity:.35; cursor:not-allowed; }
+  #go.busy { cursor:progress; opacity:.7; }
   button:focus-visible { outline:3px solid var(--signal); outline-offset:2px; }
 
-  .chips { display:flex; flex-wrap:wrap; gap:8px; margin:16px 2px 0; }
-  .chip { background:transparent; border:1px solid var(--line); color:var(--muted);
-          padding:7px 14px; border-radius:999px; font-size:.9rem; background:var(--card); }
+  .chips { display:flex; flex-wrap:wrap; justify-content:center; gap:8px; margin:22px 0 0; }
+  .chip { background:var(--card); border:1px solid var(--line); color:var(--muted);
+          padding:7px 14px; border-radius:999px; font-size:.9rem; }
   .chip:hover { border-color:var(--marine); color:var(--marine); }
 
   /* pipeline tracker */
@@ -122,22 +130,28 @@
   #refs .m { display:block; color:var(--muted); font-size:.86rem; }
   @media (max-width:560px) {
     main { padding-top:32px; }
-    form { flex-direction:column; align-items:stretch; }
-    #go { width:100%; }
+    .pill { font-size:.82rem; padding:6px 11px; }
     .step span { display:none; }
   }
   @media (prefers-reduced-motion: reduce) { .step.active .dot { animation:none; } html { scroll-behavior:auto; } }
 </style>
 </head>
-<body>
+<body class="idle">
 <main>
   <h1>Deep Research</h1>
-  <p class="lede">Ask a question and get a written report built from web sources and academic papers, with citations you can hover over.</p>
 
-  <form id="f">
-    <textarea id="q" rows="1" autocomplete="off" data-gramm="false" data-gramm_editor="false" data-enable-grammarly="false" data-lpignore="true" data-1p-ignore placeholder="e.g. How are heat pumps changing home heating in cold climates?" required minlength="3" maxlength="500" aria-label="Research topic"></textarea>
-    <button id="go" type="submit">Research</button>
-  </form>
+  <div class="composer">
+    <div class="strip">Each question runs 5 web searches and 5 academic paper searches</div>
+    <form id="f">
+      <textarea id="q" rows="2" autocomplete="off" data-gramm="false" data-gramm_editor="false" data-enable-grammarly="false" data-lpignore="true" data-1p-ignore placeholder="Describe the topic you’d like to research…" required minlength="3" maxlength="500" aria-label="Research topic"></textarea>
+      <div class="tools">
+        <span class="pill"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>Web and academic</span>
+        <button id="go" type="submit" aria-label="Start research" disabled>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 19V5M5 12l7-7 7 7"/></svg>
+        </button>
+      </div>
+    </form>
+  </div>
   <div class="chips" id="chips">
     <button type="button" class="chip">Solid-state batteries today</button>
     <button type="button" class="chip">Four-day work week</button>
@@ -177,7 +191,9 @@
   });
   const finishAll = () => { [1,2,3].forEach(i => { $("s"+i).className="step done"; $("s"+i).querySelector(".dot").textContent="\u2713"; }); };
 
-  const grow = () => { q.style.height="auto"; q.style.height=Math.min(q.scrollHeight,160)+"px"; };
+  let running = false;
+  const sync = () => { go.disabled = running || q.value.trim().length < 3; };
+  const grow = () => { q.style.height="auto"; q.style.height=Math.min(q.scrollHeight,240)+"px"; sync(); };
   q.addEventListener("input", grow);
   q.addEventListener("keydown", e => { if (e.key==="Enter" && !e.shiftKey) { e.preventDefault(); f.requestSubmit(); } });
   document.querySelectorAll(".chip").forEach(c => c.addEventListener("click", () => { q.value=c.textContent; grow(); q.focus(); }));
@@ -198,7 +214,8 @@
 
   f.addEventListener("submit", async e => {
     e.preventDefault();
-    go.disabled = true; go.textContent = "Researching\u2026";
+    if (running) return;
+    running = true; go.classList.add("busy"); sync(); document.body.classList.remove("idle");
     err.classList.remove("on"); sheet.classList.remove("on"); rep.innerHTML = "";
     tracker.classList.add("on"); meta.textContent = ""; setStep(1);
     try {
@@ -227,7 +244,7 @@
         }
       }
     } catch (ex) { fail(ex.message); }
-    finally { go.disabled = false; go.textContent = "Research"; }
+    finally { running = false; go.classList.remove("busy"); sync(); }
   });
 
   /* ---- citations: render, tooltip, reference list ---- */
